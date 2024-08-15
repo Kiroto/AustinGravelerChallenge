@@ -111,7 +111,7 @@ func main() {
 	executionTime := time.Since(startTime)
 
 	fmt.Printf("Final greatest attempt:\n - %v paralysis rolls\n - Roll Session Group #%v\n - Roll Session #%v\n - Time: %v\n\n", mostParalysisInASession, achievingSessionGroup, achievingSession, achievingTime)
-	fmt.Printf("All %v simulations took %v", maxRollSessions, executionTime)
+	fmt.Printf("All %v simulations took %v\n", maxRollSessions, executionTime)
 	fmt.Printf("Execution ended %v", endTime)
 
 }
