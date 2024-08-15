@@ -37,7 +37,7 @@ func main() {
 	// For execution configuration, we can set the amount of roll sessions manually, too.
 	maxRollSessionsPtr := flag.Int(
 		"maxAttempts",
-		1000000,
+		1000000000,
 		"The maximum amount of roll session groups before the program gives up. (A session group has 4 roll sessions)",
 	)
 
