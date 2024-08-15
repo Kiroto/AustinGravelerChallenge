@@ -7,6 +7,69 @@ import (
 	"time"
 )
 
+type rollSessionResult struct {
+	paralysisProcAmount int
+	achieveTime         time.Time
+	achieveSession      int
+}
+
+func simulateSessionGroup(
+	rollsPerSession int,
+	chanceDenominator int,
+	// ch chan<- rollSessionResult,
+	// wg *sync.WaitGroup,
+) rollSessionResult {
+
+	// defer wg.Done()
+
+	currentRoll := 0
+	paralysisProcArray := make([]int, chanceDenominator)
+
+	// Roll 4 sets
+	for currentRoll < rollsPerSession {
+		// Generate a number 0 to 3
+		number := rand.IntN(chanceDenominator)
+		// Add 1 to the array index of the result.
+		paralysisProcArray[number]++
+		// Attempt goes up by 1
+		currentRoll++
+	}
+
+	// Local minimum
+	var result rollSessionResult
+
+	result.paralysisProcAmount = 0
+	achieveSession := 0
+
+	// Get the biggest number in the results array
+	// We are essentially checking for paralysis, 4 roll sessions at a time, one for each number index.
+	for _, sessionParalysis := range paralysisProcArray {
+		achieveSession++
+
+		// Check if that index value is big
+		if sessionParalysis > result.paralysisProcAmount {
+			// If it is, save it
+			result.paralysisProcAmount = sessionParalysis
+			result.achieveTime = time.Now()
+			result.achieveSession = achieveSession
+		}
+	}
+	// ch <- result
+
+	return result
+}
+
+func showResult(result rollSessionResult, startingTime time.Time) {
+	fmt.Printf(
+		" - Paralysis procs: %v\n - Roll Session: #%v\n - Time: %v\n - Date: %v\n",
+		result.paralysisProcAmount,
+		result.achieveSession,
+		result.achieveTime.Sub(startingTime),
+		result.achieveTime,
+	)
+
+}
+
 func main() {
 	// Get the amount of non self-destructive PP we have.
 	defenseCurlPP := 40
@@ -37,12 +100,16 @@ func main() {
 	// For execution configuration, we can set the amount of roll sessions manually, too.
 	maxRollSessionsPtr := flag.Int(
 		"maxAttempts",
-		1000000000,
+		100000,
 		"The maximum amount of roll session groups before the program gives up. (A session group has 4 roll sessions)",
 	)
 
 	// If you don't want milestones to be shown, set this flag to false
-	doesShowMilestonesPtr := flag.Bool("showMilestones", true, "Whether to show each milestone")
+	doesShowMilestonesPtr := flag.Bool(
+		"showMilestones",
+		false,
+		"Whether to show each milestone",
+	)
 
 	flag.Parse()
 
@@ -54,15 +121,8 @@ func main() {
 	// One in 4 chance
 	paralysisChanceDenominator := 4
 
-	mostParalysisInASession := -1
-	achievingSessionGroup := 0
-	achievingSession := 0
-	var achievingTime time.Duration
-
 	currentSessionGroup := 0
 	currentSession := 0
-
-	resultsArray := make([]int, paralysisChanceDenominator)
 
 	// THIS IS THE RELEVANT BIT OF CODE:
 
@@ -70,47 +130,31 @@ func main() {
 	startTime := time.Now()
 	fmt.Printf("Execution started %v\n", startTime)
 
-	for (mostParalysisInASession < paralysisProcsNeeded) && (currentSession < maxRollSessions) {
-		currentRoll := 0
-		currentSessionGroup++
+	var finalResult rollSessionResult
 
-		// Roll 4 sets
-		for currentRoll < rollsPerSession {
-			// Generate a number 0 to 3
-			number := rand.IntN(paralysisChanceDenominator)
-			// Add 1 to the array index of the result.
-			resultsArray[number]++
-			// Attempt goes up by 1
-			currentRoll++
-		}
+	// responseChannel := make(chan rollSessionResult)
+	// var waitGroup sync.WaitGroup
 
-		// Get the biggest number in the results array
-		// We are essentially checking for paralysis, 4 roll sessions at a time, one for each number index.
-		for i, sessionParalysis := range resultsArray {
-			// Check if that index value is big
-			if sessionParalysis > mostParalysisInASession {
-				// If it is, save it
-				mostParalysisInASession = sessionParalysis
-				achievingSessionGroup = currentSessionGroup
-				achievingSession = currentSession
-				achievingTime = time.Since(startTime)
+	for (finalResult.paralysisProcAmount < paralysisProcsNeeded) && (currentSession < maxRollSessions) {
+		res := simulateSessionGroup(rollsPerSession, paralysisChanceDenominator)
 
-				// Announce it. This is minimal amount of rolls.
-				if doesShowMilestones {
-					fmt.Printf("NEW GOAL! %v\n - Roll Session Group #%v\n - Roll Session #%v\n - Time: %v\n\n", mostParalysisInASession, achievingSessionGroup, achievingSession, achievingTime)
-				}
+		if res.paralysisProcAmount > finalResult.paralysisProcAmount {
+			finalResult = res
+			finalResult.achieveSession += currentSessionGroup * 4
+			if doesShowMilestones {
+				fmt.Println("New Goal!")
+				showResult(finalResult, startTime)
 			}
-			// Add 1 to the amount of sessions ran
-			currentSession++
-			// Clear that index
-			resultsArray[i] = 0
 		}
+
+		currentSessionGroup++
+		currentSession += 4
 	}
 
 	endTime := time.Now()
 	executionTime := time.Since(startTime)
-
-	fmt.Printf("Final greatest attempt:\n - %v paralysis rolls\n - Roll Session Group #%v\n - Roll Session #%v\n - Time: %v\n\n", mostParalysisInASession, achievingSessionGroup, achievingSession, achievingTime)
+	fmt.Println("Final Greatest Attempt:")
+	showResult(finalResult, startTime)
 	fmt.Printf("All %v simulations took %v\n", maxRollSessions, executionTime)
 	fmt.Printf("Execution ended %v", endTime)
 
