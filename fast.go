@@ -68,7 +68,7 @@ func main() {
 
 	// Timer setup:
 	startTime := time.Now()
-	fmt.Printf("Execution started %v", startTime)
+	fmt.Printf("Execution started %v\n", startTime)
 
 	for (mostParalysisInASession < paralysisProcsNeeded) && (currentSession < maxRollSessions) {
 		currentRoll := 0
