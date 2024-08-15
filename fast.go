@@ -4,6 +4,7 @@ import (
 	"flag"
 	"fmt"
 	"math/rand/v2"
+	"sync"
 	"time"
 )
 
@@ -16,11 +17,11 @@ type rollSessionResult struct {
 func simulateSessionGroup(
 	rollsPerSession int,
 	chanceDenominator int,
-	// ch chan<- rollSessionResult,
-	// wg *sync.WaitGroup,
+	ch chan<- rollSessionResult,
+	wg *sync.WaitGroup,
 ) rollSessionResult {
 
-	// defer wg.Done()
+	defer wg.Done()
 
 	currentRoll := 0
 	paralysisProcArray := make([]int, chanceDenominator)
@@ -54,7 +55,7 @@ func simulateSessionGroup(
 			result.achieveSession = achieveSession
 		}
 	}
-	// ch <- result
+	ch <- result
 
 	return result
 }
@@ -100,7 +101,7 @@ func main() {
 	// For execution configuration, we can set the amount of roll sessions manually, too.
 	maxRollSessionsPtr := flag.Int(
 		"maxAttempts",
-		100000,
+		1000000000,
 		"The maximum amount of roll session groups before the program gives up. (A session group has 4 roll sessions)",
 	)
 
@@ -132,23 +133,35 @@ func main() {
 
 	var finalResult rollSessionResult
 
-	// responseChannel := make(chan rollSessionResult)
-	// var waitGroup sync.WaitGroup
+	maxGoroutines := 1000
 
 	for (finalResult.paralysisProcAmount < paralysisProcsNeeded) && (currentSession < maxRollSessions) {
-		res := simulateSessionGroup(rollsPerSession, paralysisChanceDenominator)
+		responseChannel := make(chan rollSessionResult)
+		var waitGroup sync.WaitGroup
 
-		if res.paralysisProcAmount > finalResult.paralysisProcAmount {
-			finalResult = res
-			finalResult.achieveSession += currentSessionGroup * 4
-			if doesShowMilestones {
-				fmt.Println("New Goal!")
-				showResult(finalResult, startTime)
-			}
+		for i := 1; i <= maxGoroutines; i++ {
+			waitGroup.Add(1)
+			go simulateSessionGroup(rollsPerSession, paralysisChanceDenominator, responseChannel, &waitGroup)
 		}
 
-		currentSessionGroup++
-		currentSession += 4
+		go func() {
+			waitGroup.Wait()
+			close(responseChannel)
+		}()
+
+		for res := range responseChannel {
+			if res.paralysisProcAmount > finalResult.paralysisProcAmount {
+				finalResult = res
+				finalResult.achieveSession += currentSessionGroup * 4
+				if doesShowMilestones {
+					fmt.Println("New Goal!")
+					showResult(finalResult, startTime)
+				}
+			}
+
+			currentSessionGroup++
+			currentSession += 4
+		}
 	}
 
 	endTime := time.Now()
