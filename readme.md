@@ -18,7 +18,7 @@ Getting more value out of your generated numbers.
 
 #### Trust a random guy in the internet and download it and run it yourself.
 
-You can find the executable on the Releases tab. Otherwise [this](/releases/latest) link should take you there.
+You can find the executable on the Releases tab. Otherwise [this](/releases) link should take you there.
 
 ## About the original Python Code
 
