@@ -67,7 +67,8 @@ func main() {
 	// THIS IS THE RELEVANT BIT OF CODE:
 
 	// Timer setup:
-	start := time.Now()
+	startTime := time.Now()
+	fmt.Printf("Execution started %v", startTime)
 
 	for (mostParalysisInASession < paralysisProcsNeeded) && (currentSession < maxRollSessions) {
 		currentRoll := 0
@@ -92,7 +93,7 @@ func main() {
 				mostParalysisInASession = sessionParalysis
 				achievingSessionGroup = currentSessionGroup
 				achievingSession = currentSession
-				achievingTime = time.Since(start)
+				achievingTime = time.Since(startTime)
 
 				// Announce it. This is minimal amount of rolls.
 				if doesShowMilestones {
@@ -106,8 +107,11 @@ func main() {
 		}
 	}
 
-	endTime := time.Since(start)
+	endTime := time.Now()
+	executionTime := time.Since(startTime)
 
 	fmt.Printf("Final greatest attempt:\n - %v paralysis rolls\n - Roll Session Group #%v\n - Roll Session #%v\n - Time: %v\n\n", mostParalysisInASession, achievingSessionGroup, achievingSession, achievingTime)
-	fmt.Printf("All %v simulations took %v", maxRollSessions, endTime)
+	fmt.Printf("All %v simulations took %v", maxRollSessions, executionTime)
+	fmt.Printf("Execution ended %v", endTime)
+
 }
