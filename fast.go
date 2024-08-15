@@ -27,7 +27,7 @@ func main() {
 		"The amount of paralysis procs needed to end the simulation in victory.",
 	)
 
-	// For execution configuration, we can set the amount of paralysis procs manually
+	// For execution configuration, we can set the amount of turns available manually
 	rollsPerSessionPtr := flag.Int(
 		"turnsToStall",
 		defaultTurnsToStall,
