@@ -3,7 +3,7 @@ package main
 import (
 	"flag"
 	"fmt"
-	"math/rand/v2"
+	"hash/maphash"
 	"sync"
 	"time"
 )
@@ -12,6 +12,10 @@ type rollSessionResult struct {
 	paralysisProcAmount int
 	achieveTime         time.Time
 	achieveSession      int
+}
+
+func Rand64() uint64 {
+	return new(maphash.Hash).Sum64()
 }
 
 func simulateSessionGroup(
@@ -26,14 +30,23 @@ func simulateSessionGroup(
 	currentRoll := 0
 	paralysisProcArray := make([]int, chanceDenominator)
 
-	// Roll 4 sets
-	for currentRoll < rollsPerSession {
-		// Generate a number 0 to 3
-		number := rand.IntN(chanceDenominator)
-		// Add 1 to the array index of the result.
-		paralysisProcArray[number]++
-		// Attempt goes up by 1
-		currentRoll++
+	bitShifts := 31
+
+outerLoop:
+	for {
+		randomNumber := Rand64() // rand.Int64()
+		// Roll 64 sets
+		for i := 0; i < bitShifts; i++ {
+			// Generate a number 0 to 3
+			number := (randomNumber >> (i * 2)) & 0b11 // Shift by 2 per i, then mask the first 2 bits
+			// Add 1 to the array index of the result.
+			paralysisProcArray[number]++
+			// Attempt goes up by 1
+			currentRoll++
+			if currentRoll > rollsPerSession {
+				break outerLoop
+			}
+		}
 	}
 
 	// Local minimum
