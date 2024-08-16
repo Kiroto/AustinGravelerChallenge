@@ -8,8 +8,12 @@ import (
 	"time"
 )
 
+const (
+	bitShifts = 31
+)
+
 type rollSessionResult struct {
-	paralysisProcAmount int
+	paralysisProcAmount uint64
 	achieveTime         time.Time
 	achieveSession      int
 }
@@ -20,28 +24,22 @@ func Rand64() uint64 {
 
 func simulateSessionGroup(
 	rollsPerSession int,
-	chanceDenominator int,
 	ch chan<- rollSessionResult,
 	wg *sync.WaitGroup,
-) rollSessionResult {
+) {
 
 	defer wg.Done()
 
 	currentRoll := 0
-	paralysisProcArray := make([]int, chanceDenominator)
-
-	bitShifts := 31
+	var paralysisProcInt uint64 = 0
 
 outerLoop:
 	for {
 		randomNumber := Rand64() // rand.Int64()
 		// Roll 64 sets
 		for i := 0; i < bitShifts; i++ {
-			// Generate a number 0 to 3
-			number := (randomNumber >> (i * 2)) & 0b11 // Shift by 2 per i, then mask the first 2 bits
-			// Add 1 to the array index of the result.
-			paralysisProcArray[number]++
-			// Attempt goes up by 1
+			paralysisProcInt += 1 << ((randomNumber >> (i << 1) & 0b11) << 0b100)
+
 			currentRoll++
 			if currentRoll > rollsPerSession {
 				break outerLoop
@@ -57,20 +55,17 @@ outerLoop:
 
 	// Get the biggest number in the results array
 	// We are essentially checking for paralysis, 4 roll sessions at a time, one for each number index.
-	for _, sessionParalysis := range paralysisProcArray {
-		achieveSession++
+	for i := 0; i < 3; i++ {
+		paralysisProcs := (paralysisProcInt >> (i << 4)) & 0xFFFF
 
-		// Check if that index value is big
-		if sessionParalysis > result.paralysisProcAmount {
-			// If it is, save it
-			result.paralysisProcAmount = sessionParalysis
+		if (paralysisProcs) > result.paralysisProcAmount {
+			result.paralysisProcAmount = paralysisProcs
 			result.achieveTime = time.Now()
 			result.achieveSession = achieveSession
 		}
 	}
-	ch <- result
 
-	return result
+	ch <- result
 }
 
 func showResult(result rollSessionResult, startingTime time.Time) {
@@ -114,7 +109,7 @@ func main() {
 	// For execution configuration, we can set the amount of roll sessions manually, too.
 	maxRollSessionsPtr := flag.Int(
 		"maxAttempts",
-		1000000000,
+		1000000,
 		"The maximum amount of roll session groups before the program gives up. (A session group has 4 roll sessions)",
 	)
 
@@ -127,13 +122,10 @@ func main() {
 
 	flag.Parse()
 
-	paralysisProcsNeeded := *paralysisProcsNeededPtr
+	paralysisProcsNeeded := uint64(*paralysisProcsNeededPtr)
 	maxRollSessions := *maxRollSessionsPtr
 	doesShowMilestones := *doesShowMilestonesPtr
 	rollsPerSession := *rollsPerSessionPtr
-
-	// One in 4 chance
-	paralysisChanceDenominator := 4
 
 	currentSessionGroup := 0
 	currentSession := 0
@@ -146,7 +138,7 @@ func main() {
 
 	var finalResult rollSessionResult
 
-	maxGoroutines := 1000
+	maxGoroutines := 1023
 
 	for (finalResult.paralysisProcAmount < paralysisProcsNeeded) && (currentSession < maxRollSessions) {
 		responseChannel := make(chan rollSessionResult)
@@ -154,7 +146,7 @@ func main() {
 
 		for i := 1; i <= maxGoroutines; i++ {
 			waitGroup.Add(1)
-			go simulateSessionGroup(rollsPerSession, paralysisChanceDenominator, responseChannel, &waitGroup)
+			go simulateSessionGroup(rollsPerSession, responseChannel, &waitGroup)
 		}
 
 		go func() {
